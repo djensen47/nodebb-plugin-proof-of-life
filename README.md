@@ -57,14 +57,24 @@ Logout is **not** handled — the cookie persists across logout/login cycles. On
 
 ## Installation
 
-From your NodeBB instance directory:
+From your NodeBB instance directory, use NodeBB's own installer rather than raw `npm install`:
 
 ```sh
-npm install nodebb-plugin-proof-of-life
+./nodebb install nodebb-plugin-proof-of-life
 ./nodebb restart
 ```
 
-Then activate the plugin in the ACP: **Extend → Plugins → "Proof of Life" → Activate** → restart NodeBB once more.
+Then verify activation in the ACP: **Extend → Plugins → "Proof of Life"** (toggle on if needed) → restart NodeBB once more.
+
+### Why not `npm install`?
+
+Raw `npm install nodebb-plugin-proof-of-life` will work but is fragile. npm sees your full `package.json` and may try to update or rebuild unrelated packages — which fails with `ENOTEMPTY` if NodeBB is running, and can subtly drift your dependency tree if it isn't.
+
+`./nodebb install` is a deliberately scoped wrapper. It uses npm flags (`--no-package-lock --omit=dev` and friends) so only the new plugin's dependency tree lands in `node_modules` — nothing else is touched. It also queries the [nbbpm registry](https://packages.nodebb.org/) to pick the plugin version best matched to your NodeBB version, and registers the plugin in NodeBB's database so it's ready for activation.
+
+### Don't pin `@latest` for older NodeBB
+
+Always prefer the unpinned form (`./nodebb install nodebb-plugin-proof-of-life`). It lets nbbpm pick a version that matches your NodeBB. Adding `@latest` forces the most recent npm version, which may not be compatible with older NodeBB releases.
 
 ## Wiring it up at the edge
 
