@@ -82,7 +82,7 @@ Cloudflare → your zone → **Caching → Cache Rules** → *Create rule*:
 | 2.x | ⚠️ Likely works — both hooks have existed since 1.x, but not actively tested |
 | 1.x | ⚠️ Probably works, unsupported |
 
-The `nbbpm.compatibility` field in `package.json` declares `>=3.0.0`. The plugin has no external runtime dependencies and only uses the standard Express `req`/`res` API exposed by NodeBB's hook system, so future major versions should continue to work as long as those hooks remain.
+The `nbbpm.compatibility` field in `package.json` declares `^3.0.0 || ^4.0.0`. The same value is mirrored in `plugin.json`'s (now-deprecated) `compatibility` field for the benefit of any older NodeBB releases that still read from the legacy location. The plugin has no external runtime dependencies and only uses the standard Express `req`/`res` API exposed by NodeBB's hook system, so a future v5 should still work — but the manifest would need to be updated to advertise that explicitly.
 
 If you run on an older or unusual NodeBB and confirm the plugin works (or doesn't), open an issue and the compatibility table can be updated.
 
