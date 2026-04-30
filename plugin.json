@@ -1,0 +1,11 @@
+{
+  "id": "nodebb-plugin-proof-of-life",
+  "name": "Proof of Life",
+  "description": "Sets nbb_human=1 cookie for logged-in users so Cloudflare can bypass Under Attack Mode and skip caching for them.",
+  "url": "https://github.com/djensen47/nodebb-plugin-proof-of-life",
+  "library": "./library.js",
+  "hooks": [
+    { "hook": "action:user.loggedIn", "method": "onLoggedIn" },
+    { "hook": "filter:middleware.render", "method": "backfillCookie" }
+  ]
+}
