@@ -1,17 +1,35 @@
 # nodebb-plugin-proof-of-life
 
-A tiny [NodeBB](https://nodebb.org/) plugin that drops a single cookie — `nbb_human=1` — on every authenticated session, so an upstream CDN or WAF (typically Cloudflare) can tell logged-in humans apart from anonymous traffic at the edge.
+A tiny [NodeBB](https://nodebb.org/) plugin that drops a single cookie — `nbb_human=1` — on every authenticated session, so an upstream CDN, WAF, reverse proxy, or any other edge layer can distinguish logged-in sessions from everything else.
 
-The cookie carries no payload, no signature, and no information about the user. It's just a marker: *"a human logged in from this browser at some point."*
+The cookie carries no payload, no signature, and no information about the user. It's just a presence-or-absence marker.
+
+## What it actually tells you (and what it doesn't)
+
+Be precise about this: the cookie marks **authenticated sessions**, not "humans." The plugin has no way to fingerprint a request as human; it only knows whether NodeBB has a logged-in user attached to it.
+
+Three populations of traffic, two of which the cookie can't separate:
+
+|  | Has cookie? |
+|---|---|
+| Authenticated user (logged in) | ✅ |
+| Anonymous human (lurker, search engine visitor, RSS reader) | ❌ |
+| Bot / crawler / scraper | ❌ |
+
+The cookie name is `nbb_human` because logging in is a half-decent proxy for "real person" — the friction of registration filters out most casual bots. But it's a proxy, not a guarantee. A determined bot that creates an account will get the cookie. An anonymous human reader will not.
+
+That gap matters because it shapes what edge rules you can usefully build with this signal: the cookie is good for **"give logged-in users different treatment"** decisions. It is not good for **"is this request a bot?"** decisions — that question requires a real bot-detection layer (TLS fingerprinting, behavior, IP reputation), which the cookie does not provide.
 
 ## What it's for
 
-Two operational wins, both at the Cloudflare layer:
+Generic edge-layer use cases where "logged-in" is the discriminator you need:
 
-1. **Bypass "Under Attack Mode"** for logged-in users. UAM's interstitial JS challenge is great against attackers, miserable for actual members. A cookie-based bypass rule lets your community keep posting through an attack while everyone else gets challenged.
-2. **Cache anonymous traffic, skip cache for logged-in users.** Most of NodeBB's read traffic is anonymous (search engines, casual readers). Letting Cloudflare cache those responses is a huge origin-load win — but you need a way to *exclude* logged-in users so they always see fresh content (new posts, notifications, their own avatars in the header). The cookie is that signal.
+- **Skip aggressive challenge modes** (CAPTCHA interstitials, JS-challenge pages, "Under Attack Mode") for logged-in users so they aren't bounced out of their session during a flood, while everyone else still gets the challenge.
+- **Cache the anonymous bucket, bypass cache for logged-in users.** Most forum read traffic is anonymous and serves identical responses to everyone — cacheable. Logged-in users see personalized content (notifications, header avatar, draft posts) and need fresh responses every time. The cookie is the cache-key splitter.
+- **Apply different rate limits per population.** Logged-in users get higher limits; everyone else gets stricter ones.
+- **Different routing or origin selection.** Send logged-in traffic to a faster origin pool; let cached anonymous traffic absorb the spike.
 
-The plugin doesn't talk to Cloudflare. It just sets the cookie. The Cloudflare-side rules are configured in your dashboard — see [Configuring Cloudflare](#configuring-cloudflare) below.
+The plugin doesn't talk to your edge. It just sets the cookie. The rules and lookups live wherever you run your edge — Cloudflare WAF, Fastly VCL, AWS CloudFront functions, Varnish, nginx, etc.
 
 ## How it works
 
@@ -22,16 +40,16 @@ Two hook handlers, ~20 lines of logic total:
 | `action:user.loggedIn` | Fired by NodeBB the moment a login succeeds | Sets `nbb_human=1` on the response |
 | `filter:middleware.render` | Fired on every page render | If the user is authenticated (`req.uid > 0`) but the cookie is missing, sets it (backfill for sessions that pre-date the plugin or browsers that have lost the cookie) |
 
-Logout is **not** handled — the cookie persists across logout/login cycles. Once a browser has proved a human used it, the marker stays.
+Logout is **not** handled — the cookie persists across logout/login cycles. Once a browser has authenticated, the marker stays. That's a deliberate trade-off: a logged-out browser will still skip cache (small cost) but will also still bypass challenge modes (the value).
 
 ## Cookie attributes
 
 | Attribute | Value | Why |
 |---|---|---|
 | Name | `nbb_human` | Hard-coded |
-| Value | `1` | Cloudflare just checks for presence |
+| Value | `1` | Edge layers just check for presence |
 | `HttpOnly` | `true` | No client JS needs to read it. Doesn't affect AJAX, fetch, or socket.io — those all carry cookies automatically |
-| `Secure` | derived from request (`req.secure || req.protocol === 'https'`) | True in production, false on plain-HTTP dev |
+| `Secure` | derived from request (`req.secure \|\| req.protocol === 'https'`) | True in production, false on plain-HTTP dev |
 | `SameSite` | `Lax` | Standard, doesn't break anything |
 | `Max-Age` | 1 year | Refreshed on every login |
 | `Path` | `/` | All routes |
@@ -48,30 +66,43 @@ npm install nodebb-plugin-proof-of-life
 
 Then activate the plugin in the ACP: **Extend → Plugins → "Proof of Life" → Activate** → restart NodeBB once more.
 
-## Configuring Cloudflare
+## Wiring it up at the edge
 
-The plugin only sets the cookie. The actual edge behavior comes from rules you configure in your Cloudflare dashboard.
+The cookie is just `nbb_human=1`. Any edge layer that can read request cookies can branch on it. A few sketches:
 
-### Bypass Under Attack Mode for logged-in users
+**Cloudflare WAF custom rule** — skip a managed challenge for logged-in users:
 
-Cloudflare → your zone → **Security → WAF → Custom rules** → *Create rule*:
+```
+(http.cookie contains "nbb_human=1") → Skip
+```
 
-- **Field**: `Cookie`
-- **Operator**: `contains`
-- **Value**: `nbb_human=1`
-- **Action**: `Skip` → check "All remaining custom rules" and "Bot Fight Mode" (and any managed rules you want to bypass)
+**Cloudflare Cache Rule** — bypass cache when the cookie is present:
 
-Or, if you only want to skip UAM specifically and keep other protections active, use the dedicated UAM bypass that Cloudflare exposes for cookie-tagged users.
+```
+(http.cookie contains "nbb_human=1") → Bypass cache
+```
 
-### Cache anonymous traffic, skip cache for logged-in users
+**Fastly VCL** — different cache key per population:
 
-Cloudflare → your zone → **Caching → Cache Rules** → *Create rule*:
+```vcl
+if (req.http.Cookie ~ "nbb_human=1") {
+  set req.http.X-Logged-In = "1";
+  return(pass);
+}
+```
 
-- **Match**: `Hostname` equals your forum hostname (e.g., `www.example.com`)
-- **Then**: `Cache eligibility` → set to `Eligible for cache`
-- **Bypass cache**: add a sub-condition: `Cookie contains "nbb_human=1"` → `Bypass cache`
+**nginx** — split the upstream:
 
-**Important sanity check before flipping caching on**: make sure the anonymous responses you're caching don't contain per-user content (CSRF tokens rendered into HTML, personalized navigation, etc.). NodeBB's anonymous-user pages are mostly safe, but verify with your specific theme and plugin set.
+```nginx
+map $http_cookie $is_logged_in {
+  default       0;
+  "~*nbb_human=1" 1;
+}
+```
+
+The shape is the same everywhere: read `Cookie`, check for `nbb_human=1`, branch.
+
+**Cache sanity check before flipping caching on**: make sure the anonymous responses you're caching don't contain per-user content (CSRF tokens rendered into HTML, personalized navigation, etc.). NodeBB's anonymous-user pages are mostly safe, but verify with your specific theme and plugin set.
 
 ## Compatibility
 
@@ -88,10 +119,11 @@ If you run on an older or unusual NodeBB and confirm the plugin works (or doesn'
 
 ## Caveats
 
-- **Single host only.** The cookie's `Domain` attribute is not set, so it defaults to the request host. If your forum lives on multiple subdomains and Cloudflare needs to read the cookie across them, you'll need to fork the plugin or contribute a config option for `domain`.
+- **Single host only.** The cookie's `Domain` attribute is not set, so it defaults to the request host. If your forum lives on multiple subdomains and your edge needs to read the cookie across them, you'll need to fork the plugin or contribute a config option for `domain`.
 - **Cookie name is hard-coded.** No admin settings panel. If `nbb_human` collides with something, fork or PR.
-- **`HttpOnly` means client-side JS can't see the cookie.** That's intentional (the cookie is read only by Cloudflare at the edge), but if you wanted to use it in client JS for some reason, you'd need to flip the flag.
-- **Banned users keep the cookie.** They'll still bypass UAM and skip cache, but they're banned, so they can't actually do anything harmful. Revoking on ban is possible but adds complexity for negligible gain — see the design discussion in PR #1.
+- **`HttpOnly` means client-side JS can't see the cookie.** That's intentional (the cookie is read at the edge, not in the browser), but if you wanted to use it in client JS, you'd need to flip the flag.
+- **Banned users keep the cookie.** They'll still hit edge rules as if logged in, but they're banned, so they can't actually do anything harmful. Revoking on ban is possible but adds complexity for negligible gain.
+- **Not a bot signal.** As discussed above, this cookie cannot tell you whether an anonymous request is a human or a bot. If you need that distinction, layer a real bot-detection product on top.
 
 ## License
 
