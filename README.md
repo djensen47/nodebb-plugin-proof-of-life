@@ -6,9 +6,9 @@ The cookie carries no payload, no signature, and no information about the user. 
 
 ## What it actually tells you (and what it doesn't)
 
-Be precise about this: the cookie marks **authenticated sessions**, not "humans." The plugin has no way to fingerprint a request as human; it only knows whether NodeBB has a logged-in user attached to it.
+This cookie currently marks **authenticated sessions**, not "humans." The plugin currently has no way to fingerprint a request as human; it only knows whether NodeBB has a logged-in user attached to it. Fingerprinting could be a future enhancement.
 
-Three populations of traffic, two of which the cookie can't separate:
+Three populations of traffic, two of which the plugin cannot separate:
 
 |  | Has cookie? |
 |---|---|
