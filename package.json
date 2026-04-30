@@ -1,6 +1,6 @@
 {
   "name": "nodebb-plugin-proof-of-life",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Sets a cookie (nbb_human=1) for logged-in NodeBB users so Cloudflare can bypass Under Attack Mode and skip caching for them.",
   "main": "library.js",
   "files": [
