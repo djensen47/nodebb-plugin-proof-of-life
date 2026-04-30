@@ -4,7 +4,7 @@
   "description": "Sets nbb_human=1 cookie for logged-in users so Cloudflare can bypass Under Attack Mode and skip caching for them.",
   "url": "https://github.com/djensen47/nodebb-plugin-proof-of-life",
   "library": "./library.js",
-  "compatibility": "^3.0.0 || ^4.0.0",
+  "compatibility": ">=3.0.0",
   "hooks": [
     { "hook": "action:user.loggedIn", "method": "onLoggedIn" },
     { "hook": "filter:middleware.render", "method": "backfillCookie" }

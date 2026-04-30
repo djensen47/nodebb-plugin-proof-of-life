@@ -60,11 +60,11 @@ Logout is **not** handled — the cookie persists across logout/login cycles. On
 From your NodeBB instance directory:
 
 ```sh
-npm install nodebb-plugin-proof-of-life
+./nodebb install nodebb-plugin-proof-of-life
 ./nodebb restart
 ```
 
-Then activate the plugin in the ACP: **Extend → Plugins → "Proof of Life" → Activate** → restart NodeBB once more.
+Then verify activation in the ACP: **Extend → Plugins → "Proof of Life"** (toggle on if needed) → restart NodeBB once more.
 
 ## Wiring it up at the edge
 
@@ -113,7 +113,7 @@ The shape is the same everywhere: read `Cookie`, check for `nbb_human=1`, branch
 | 2.x | ⚠️ Likely works — both hooks have existed since 1.x, but not actively tested |
 | 1.x | ⚠️ Probably works, unsupported |
 
-The `nbbpm.compatibility` field in `package.json` declares `^3.0.0 || ^4.0.0`. The same value is mirrored in `plugin.json`'s (now-deprecated) `compatibility` field for the benefit of any older NodeBB releases that still read from the legacy location. The plugin has no external runtime dependencies and only uses the standard Express `req`/`res` API exposed by NodeBB's hook system, so a future v5 should still work — but the manifest would need to be updated to advertise that explicitly.
+The `nbbpm.compatibility` field in `package.json` declares `>=3.0.0`. The same value is mirrored in `plugin.json`'s (now-deprecated) `compatibility` field for the benefit of any older NodeBB releases that still read from the legacy location. We use the open-ended `>=` form rather than the more idiomatic `^3.0.0 || ^4.0.0` because some older NodeBB installers can't parse the OR operator, which causes them to refuse to install the plugin entirely. The plugin has no external runtime dependencies and only uses the standard Express `req`/`res` API exposed by NodeBB's hook system, so a future v5 should still work.
 
 If you run on an older or unusual NodeBB and confirm the plugin works (or doesn't), open an issue and the compatibility table can be updated.
 
