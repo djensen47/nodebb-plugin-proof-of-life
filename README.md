@@ -119,8 +119,8 @@ If you run on an older or unusual NodeBB and confirm the plugin works (or doesn'
 
 ## Caveats
 
-- **Single host only.** The cookie's `Domain` attribute is not set, so it defaults to the request host. If your forum lives on multiple subdomains and your edge needs to read the cookie across them, you'll need to fork the plugin or contribute a config option for `domain`.
-- **Cookie name is hard-coded.** No admin settings panel. If `nbb_human` collides with something, fork or PR.
+- **Single host only.** The cookie's `Domain` attribute is not set, so it defaults to the request host. Most forums live on a single hostname, so this default keeps things simple. If your forum spans multiple subdomains and your edge needs to read the cookie across them, that's a reasonable feature request — open an issue. NodeBB's plugin framework supports admin-configurable settings, so adding a `domain` option is straightforward; we just didn't need it.
+- **Cookie name is hard-coded.** No admin settings panel today. If `nbb_human` collides with something in your stack, open an issue — making the name configurable is the same kind of small addition as the `domain` option above.
 - **`HttpOnly` means client-side JS can't see the cookie.** That's intentional (the cookie is read at the edge, not in the browser), but if you wanted to use it in client JS, you'd need to flip the flag.
 - **Banned users keep the cookie.** They'll still hit edge rules as if logged in, but they're banned, so they can't actually do anything harmful. Revoking on ban is possible but adds complexity for negligible gain.
 - **Not a bot signal.** As discussed above, this cookie cannot tell you whether an anonymous request is a human or a bot. If you need that distinction, layer a real bot-detection product on top.
