@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/djensen47/nodebb-plugin-proof-of-life/compare/v1.2.1...v1.2.2) (2026-04-30)
+
+
+### Bug Fixes
+
+* widen compat to "&gt;=3.0.0" and use ./nodebb install in README ([#10](https://github.com/djensen47/nodebb-plugin-proof-of-life/issues/10)) ([c525a0a](https://github.com/djensen47/nodebb-plugin-proof-of-life/commit/c525a0a567192c22ba690bd256c572e8827063c3))
+
 ## [1.2.1](https://github.com/djensen47/nodebb-plugin-proof-of-life/compare/v1.2.0...v1.2.1) (2026-04-30)
 
 
