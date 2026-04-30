@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/djensen47/nodebb-plugin-proof-of-life/compare/v1.2.0...v1.2.1) (2026-04-30)
+
+
+### Bug Fixes
+
+* **ci:** use Node 24 for publish (ships with npm &gt;= 11 for OIDC) ([#7](https://github.com/djensen47/nodebb-plugin-proof-of-life/issues/7)) ([0265ea9](https://github.com/djensen47/nodebb-plugin-proof-of-life/commit/0265ea92bee22d144e90492bfddcd60d6c40c9fe))
+
 ## [1.2.0](https://github.com/djensen47/nodebb-plugin-proof-of-life/compare/v1.1.0...v1.2.0) (2026-04-30)
 
 
