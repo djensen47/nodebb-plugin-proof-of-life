@@ -5,6 +5,7 @@
       "release-type": "node",
       "package-name": "nodebb-plugin-proof-of-life",
       "include-v-in-tag": true,
+      "include-component-in-tag": false,
       "draft": false,
       "prerelease": false,
       "bump-minor-pre-major": true,
